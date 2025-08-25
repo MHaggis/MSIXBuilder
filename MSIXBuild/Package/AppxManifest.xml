@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+  <Identity Name="HaagerApp" Publisher="CN=HaagResearch" Version="1.0.0.0" />
+  <Properties>
+    <DisplayName>Haager</DisplayName>
+    <PublisherDisplayName>HaagResearch</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>MSIX package for security testing and detection validation</Description>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22000.0" />
+  </Dependencies>
+  <Applications>
+    <Application Id="HaagerApp" Executable="VFS\ProgramFilesX64\Haager\Haager.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Haager" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="Security testing application for MSIX detection">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

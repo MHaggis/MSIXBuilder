@@ -1,0 +1,129 @@
+name: Build and Release MSIXBuilder GUI
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'GUI/**'
+      - 'Create-MSIXPackage.ps1'
+      - '.github/workflows/build-gui.yml'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'GUI/**'
+      - 'Create-MSIXPackage.ps1'
+  workflow_dispatch:
+
+env:
+  SOLUTION_FILE_PATH: GUI/MSIXBuilderGUI.sln
+  BUILD_CONFIGURATION: Release
+  PLATFORM: x64
+
+permissions:
+  contents: write
+  actions: read
+  security-events: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+
+
+    - name: Restore NuGet packages
+      run: nuget restore ${{ env.SOLUTION_FILE_PATH }}
+
+    - name: Build GUI Application
+      run: |
+        msbuild ${{ env.SOLUTION_FILE_PATH }} /m /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=${{ env.PLATFORM }}
+
+    - name: Publish Application
+      run: |
+        # Ensure the PowerShell script exists for embedding
+        if (!(Test-Path "Create-MSIXPackage.ps1")) { 
+          Write-Error "Create-MSIXPackage.ps1 not found in root directory"
+          exit 1
+        }
+        dotnet publish GUI/MSIXBuilderGUI/MSIXBuilderGUI.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --output GUI/publish
+      shell: powershell
+
+    - name: Create Release Archive
+      run: |
+        # Copy the PowerShell script to the publish directory for inclusion
+        Copy-Item "Create-MSIXPackage.ps1" "GUI/publish/"
+        
+        # Create a single zip file with GUI + PowerShell script
+        Compress-Archive -Path "GUI/publish/*" -DestinationPath "MSIXBuilderGUI-v${{ github.run_number }}.zip"
+      shell: powershell
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MSIXBuilderGUI-${{ github.sha }}
+        path: |
+          MSIXBuilderGUI-v${{ github.run_number }}.zip
+
+    - name: Debug Release Info
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        echo "GitHub Token exists: ${{ secrets.GITHUB_TOKEN != '' }}"
+        echo "Repository: ${{ github.repository }}"
+        echo "Run number: ${{ github.run_number }}"
+        echo "SHA: ${{ github.sha }}"
+        ls -la *.zip
+      shell: bash
+
+    - name: Create Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ github.run_number }}
+        name: MSIXBuilder GUI v${{ github.run_number }}
+        body: |
+          ## 🚀 MSIXBuilder GUI Release v${{ github.run_number }}
+          
+          **What's New:**
+          - Latest build with all improvements and bug fixes
+          - Automatic PowerShell script execution with non-interactive mode
+          - One-click certificate installation
+          - Comprehensive logging and error handling
+          - Modern Windows Forms interface
+          
+          **Downloads:**
+          - `MSIXBuilderGUI-v${{ github.run_number }}.zip` - GUI application + PowerShell script
+          
+          **Requirements:**
+          - Windows 10 (1809+) or Windows 11
+          - .NET 8.0 Runtime
+          - Administrator privileges
+          
+          **Usage:**
+          1. Download and extract the zip file
+          2. Run `MSIXBuilderGUI.exe`
+          3. Configure your package settings
+          4. Click "Create Package" and enjoy! 🎉
+          
+          Built from commit: ${{ github.sha }}
+        files: |
+          MSIXBuilderGUI-v${{ github.run_number }}.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
